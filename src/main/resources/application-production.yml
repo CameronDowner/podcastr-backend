@@ -17,3 +17,5 @@ spring:
             token-uri: https://accounts.spotify.com/api/token
             user-info-uri: https://api.spotify.com/v1/me
             user-name-attribute: id
+
+listennotes.apikey: ${LISTEN_NOTES_API_KEY}
