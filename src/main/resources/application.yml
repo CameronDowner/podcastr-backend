@@ -4,7 +4,8 @@ spring:
       client:
         registration:
           spotify:
-
+            client-id: ${SPOTIFY_CLIENT_ID}
+            client-secret: ${SPOTIFY_CLIENT_SECRET}
             provider: spotify-provider
             client-authentication-method: basic
             authorization-grant-type: authorization_code
