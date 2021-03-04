@@ -41,7 +41,7 @@ class SecurityConfig {
             .anyExchange().authenticated()
             .and()
             .oauth2Login {
-                it.authenticationSuccessHandler(HardRedirectServerAuthenticationSuccessHandler("http://localhost:3000/home"))
+                it.authenticationSuccessHandler(HardRedirectServerAuthenticationSuccessHandler("/home"))
             }
             .logout {
                 it.logoutUrl("/api/logout")
