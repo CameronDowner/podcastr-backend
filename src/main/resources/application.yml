@@ -10,7 +10,7 @@ spring:
             client-authentication-method: basic
             authorization-grant-type: authorization_code
             scope: user-read-email,user-library-read,playlist-read-private
-            redirect-uri: http://localhost:8080/login/oauth2/code/spotify
+            redirect-uri: /login/oauth2/code/spotify
         provider:
           spotify-provider:
             authorization-uri: https://accounts.spotify.com/authorize
