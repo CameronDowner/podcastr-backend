@@ -2,6 +2,9 @@ package com.github.camerondowner.podcaster
 
 import org.springframework.boot.autoconfigure.SpringBootApplication
 import org.springframework.boot.runApplication
+import org.springframework.cache.CacheManager
+import org.springframework.cache.annotation.EnableCaching
+import org.springframework.cache.concurrent.ConcurrentMapCacheManager
 import org.springframework.context.annotation.Bean
 import org.springframework.context.annotation.Configuration
 import org.springframework.http.HttpMethod
@@ -21,9 +24,11 @@ import org.springframework.web.bind.annotation.GetMapping
 import org.springframework.web.bind.annotation.RestController
 import reactor.core.publisher.Mono
 import java.net.URI
+import java.security.Principal
 
 
 @SpringBootApplication
+@EnableCaching
 class PodcasterApplication
 
 fun main(args: Array<String>) {
@@ -68,7 +73,6 @@ class HardRedirectServerAuthenticationSuccessHandler(private val location: URI) 
 
     }
 }
-
 
 @RestController
 class BaseController {

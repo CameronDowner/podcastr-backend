@@ -5,7 +5,11 @@ import com.fasterxml.jackson.databind.annotation.JsonNaming
 import com.github.camerondowner.podcaster.controller.Episode
 import com.github.camerondowner.podcaster.controller.Podcast
 import kotlin.math.roundToInt
+import kotlinx.coroutines.Deferred
+import kotlinx.coroutines.GlobalScope
+import kotlinx.coroutines.async
 import org.springframework.beans.factory.annotation.Value
+import org.springframework.cache.annotation.Cacheable
 import org.springframework.stereotype.Service
 import org.springframework.web.reactive.function.client.WebClient
 import org.springframework.web.reactive.function.client.awaitBody
@@ -22,14 +26,57 @@ class ListenNotesService(
         .defaultHeader("X-ListenAPI-Key", apiKey)
         .build()
 
-    suspend fun getRandomPodcast(): Podcast {
-        val podcasts = getBestPodcastsInGenre(140).podcasts
+    @Cacheable("findPodcast")
+    fun findPodcastByNameAsync(podcastName: String): Deferred<Podcast?> {
+        return GlobalScope.async {
+            webClient.get()
+                .uri {
+                    it.path("/search")
+                        .queryParam("type", "podcast")
+                        .queryParam("only_in", "title")
+                        .queryParam("language", "English")
+                        .queryParam("q", podcastName)
+                        .build()
+                }
+                .retrieve()
+                .awaitBody<SearchPodcastResponse>()
+                .results
+                .map {
+                    it.toListenNotesPodcast()
+                }
+                .map {
+                    Podcast(
+                        title = it.title,
+                        description = it.description,
+                        thumbnail = it.thumbnail,
+                        listenNotesId = it.id
+                    )
+                }.firstOrNull()
+        }
+    }
 
+    @Cacheable("podcastRecommendations")
+    fun findPodcastRecommendationsAsync(podcast: Podcast): Deferred<List<Podcast>> {
+        return GlobalScope.async {
+            webClient.get()
+                .uri("/podcasts/{podcastId}/recommendations", podcast.listenNotesId)
+                .retrieve()
+                .awaitBody<RecommendationsResponse>()
+                .recommendations
+                .map {
+                    Podcast(
+                        title = it.title,
+                        description = it.description,
+                        thumbnail = it.thumbnail,
+                        listenNotesId = it.id
+                    )
+                }
+        }
+    }
 
-        val randomPodcast = getPodcastById(podcasts.random().id)
+    suspend fun getPodcastWithPreviewEpisode(podcastId: String): Podcast {
+        val randomPodcast = getPodcastById(podcastId)
         val randomEpisode = randomPodcast.episodes.randomOrNull()
-
-
 
         val previewEpisode = randomEpisode?.let {
             Episode(
@@ -45,7 +92,8 @@ class ListenNotesService(
             title = randomPodcast.title,
             description = randomPodcast.description,
             thumbnail = randomPodcast.thumbnail,
-            previewEpisode = previewEpisode
+            listenNotesId = randomPodcast.id,
+            previewEpisode = previewEpisode,
         )
     }
 
@@ -67,7 +115,9 @@ class ListenNotesService(
         return startingPoint
     }
 
+    @Cacheable("completePodcast")
     suspend fun getPodcastById(podcastId: String): ListenNotesPodcast {
+        println("getPodcastById: $podcastId")
         return webClient.get()
             .uri("/podcasts/{podcastId}", podcastId)
             .retrieve()
@@ -93,6 +143,14 @@ data class BestPodcastResponse(
     val podcasts: List<ListenNotesPodcast>
 )
 
+data class SearchPodcastResponse(
+    val results: List<ListenNotesPodcastSearchResult>
+)
+
+data class RecommendationsResponse(
+    val recommendations: List<ListenNotesPodcast>
+)
+
 data class ListenNotesPodcast(
     val id: String,
     val title: String,
@@ -100,6 +158,20 @@ data class ListenNotesPodcast(
     val thumbnail: String,
     val episodes: List<ListenNotesEpisode> = emptyList()
 )
+
+@JsonNaming(PropertyNamingStrategy.SnakeCaseStrategy::class)
+data class ListenNotesPodcastSearchResult(
+    val id: String,
+    val titleOriginal: String,
+    val descriptionOriginal: String,
+    val thumbnail: String
+) {
+    fun toListenNotesPodcast(): ListenNotesPodcast {
+        return ListenNotesPodcast(
+            id, titleOriginal, descriptionOriginal, thumbnail
+        )
+    }
+}
 
 @JsonNaming(PropertyNamingStrategy.SnakeCaseStrategy::class)
 data class ListenNotesEpisode(
